@@ -217,7 +217,8 @@ ssh -i /tmp/root\_key root@10.129.47.24
 cat /root/root.txt
 ```
 
-![Root shell obtained via the SSH key planted by the traversal exploit](images/root_flag.png) *Root shell obtained via `ssh -i /tmp/root\_key root@10.129.47.24`, confirming full privilege escalation and root flag retrieval.*
+![Root shell obtained via the SSH key planted by the traversal exploit](images/root_flag.png) 
+*Root shell obtained via `ssh -i /tmp/root\_key root@10.129.47.24`, confirming full privilege escalation and root flag retrieval.*
 
 
 ## Evidence Appendix
