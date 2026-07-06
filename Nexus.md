@@ -97,7 +97,8 @@ cd krayin-docker-setup
 git log -p | grep DB\_PASSWORD
 ```
 
-![git log -p output revealing DB\_PASSWORD](images/git_log_password.png) *`git log -p | grep DB\_PASSWORD` confirming the exposed credential directly from the command line.*
+![git log -p output revealing DB\_PASSWORD](images/git_log_password.png) 
+`git log -p | grep DB\_PASSWORD` confirming the exposed credential directly from the command line.
 
 
 ### 2. Krayin CRM Unrestricted File Upload (High)
