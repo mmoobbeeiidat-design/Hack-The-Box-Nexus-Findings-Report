@@ -34,11 +34,11 @@ During the security assessment of the target host `10.129.47.24` (HTB\_Nexus) co
 
 ## Top 5 Risks
 
-| \# | Finding | Severity | Risk Score | Exploitability |
-| - | - | - | - | - |
-| 1 | Gitea Template Sync Directory Traversal | Critical | 9.8 | Easy (Local binary manipulation) |
-| 2 | Krayin CRM Unrestricted File Upload | High | 8.5 | Easy (Burp Suite modification) |
-| 3 | Exposed Credentials in Gitea Commit History | Medium | 6.5 | Easy (Basic Git usage) |
+| \#  | Finding                                     | Severity | Risk Score | Exploitability                   |
+| --- | ------------------------------------------- | -------- | ---------- | -------------------------------- |
+| 1   | Gitea Template Sync Directory Traversal     | Critical | 9.8        | Easy (Local binary manipulation) |
+| 2   | Krayin CRM Unrestricted File Upload         | High     | 8.5        | Easy (Burp Suite modification)   |
+| 3   | Exposed Credentials in Gitea Commit History | Medium   | 6.5        | Easy (Basic Git usage)           |
 
 
 
@@ -98,6 +98,7 @@ git log -p | grep DB\_PASSWORD
 ```
 
 ![git log -p output revealing DB\_PASSWORD](images/git_log_password.png) 
+
 `git log -p | grep DB\_PASSWORD` confirming the exposed credential directly from the command line.
 
 
@@ -218,6 +219,7 @@ cat /root/root.txt
 ```
 
 ![Root shell obtained via the SSH key planted by the traversal exploit](images/root_flag.png) 
+
 *Root shell obtained via `ssh -i /tmp/root\_key root@10.129.47.24`, confirming full privilege escalation and root flag retrieval.*
 
 
